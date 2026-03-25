@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Followsweep</title>
+
+    <!-- ✅ MOBILE VIEWPORT -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root {
+            --bg: #111;
+            --text: #fff;
+            --card: #222;
+            --button: #333;
+            --border: #444;
+        }
+
+        .light {
+            --bg: #f5f5f5;
+            --text: #111;
+            --card: #fff;
+            --button: #ddd;
+            --border: #bbb;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 12px;
+            caret-color: transparent;
+        }
+
+        #searchBox {
+            caret-color: auto;
+        }
+
+        /* TOP BAR */
+        .topbar {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin: 0;
+        }
+
+        h3 {
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 8px;
+            width: 100%;
+            margin-top: 6px;
+            cursor: pointer;
+            background: var(--button);
+            color: var(--text);
+            border: none;
+        }
+
+        input {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            background: var(--card);
+            color: var(--text);
+            border: none;
+            border-radius: 8px;
+        }
+
+        .custom-file {
+            display: block;
+            text-align: center;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 8px;
+            background: var(--button);
+            cursor: pointer;
+        }
+
+        .file-name {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-bottom: 10px;
+        }
+
+        .user {
+            margin-bottom: 12px;
+            padding: 14px;
+            background: var(--card);
+            border-radius: 12px;
+        }
+
+        .user.done {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+
+        .instructions {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .stats {
+            margin: 10px 0;
+            padding: 10px;
+            background: var(--card);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .progress-wrap {
+            background: var(--button);
+            border-radius: 99px;
+            height: 6px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--text);
+            width: 0%;
+            transition: 0.3s;
+        }
+
+        #onetab-banner {
+            display: none;
+            position: fixed;
+            bottom: 15px;
+            left: 5%;
+            width: 90%;
+            background: var(--card);
+            border: 1px solid var(--button);
+            padding: 14px;
+            border-radius: 12px;
+            z-index: 999;
+            text-align: center;
+        }
+
+        .banner-btns {
+            margin-top: 10px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .banner-btns button {
+            flex: 1;
+        }
+
+        @media (min-width: 600px) {
+            body {
+                max-width: 600px;
+                margin: auto;
+            }
+
+            button {
+                width: auto;
+            }
+
+            .custom-file {
+                display: inline-block;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="topbar">
+    <h2>Followsweep 🚀</h2>
+    <button onclick="toggleTheme()">Theme</button>
+</div>
+
+<div class="instructions">
+    <h3>📘 How to Use</h3>
+    <ol>
+        <li>Instagram → Settings → Accounts Center</li>
+        <li>Download Your Information</li>
+        <li>Select Followers & Following</li>
+        <li>Format: JSON</li>
+        <li>Upload below</li>
+    </ol>
+</div>
+
+<label for="followersFile" class="custom-file">📁 Followers list</label>
+<div id="followersName" class="file-name">No file selected</div>
+
+<label for="followingFile" class="custom-file">📁 Following list</label>
+<div id="followingName" class="file-name">No file selected</div>
+
+<input type="file" id="followersFile" hidden>
+<input type="file" id="followingFile" hidden>
+
+<button onclick="processData()">Show Unfollowers</button>
+
+<div class="stats">
+    <div id="followersCount">Followers: 0</div>
+    <div id="followingCount">Following: 0</div>
+    <div id="doneCount">Done: 0</div>
+</div>
+
+<div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<input type="text" id="searchBox" placeholder="Search username..." oninput="filterUsers()">
+
+<h3 id="count"></h3>
+<div id="output"></div>
+
+<div id="onetab-banner">
+    <div>Opened <b id="banner-user">@user</b></div>
+    <div class="banner-btns">
+        <button onclick="markCurrentDone()">✔ Done</button>
+        <button onclick="skipCurrent()">⏭ Skip</button>
+    </div>
+</div>
+
+<script>
+let allUsers = [];
+let doneSet = new Set(JSON.parse(localStorage.getItem('fs_done') || '[]'));
+let currentUser = null;
+
+function toggleTheme() {
+    document.body.classList.toggle("light");
+    localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
+}
+
+window.onload = () => {
+    if (localStorage.getItem("theme") === "light") {
+        document.body.classList.add("light");
+    }
+};
+
+followersFile.onchange = () => followersName.innerText = followersFile.files[0]?.name || "";
+followingFile.onchange = () => followingName.innerText = followingFile.files[0]?.name || "";
+
+function extractUsernames(data) {
+    let usernames = [];
+    function scan(obj) {
+        if (Array.isArray(obj)) obj.forEach(scan);
+        else if (typeof obj === "object" && obj) {
+            if (obj.value) usernames.push(obj.value);
+            if (obj.title) usernames.push(obj.title);
+            for (let k in obj) scan(obj[k]);
+        }
+    }
+    scan(data);
+    return [...new Set(usernames)];
+}
+
+function processData() {
+    let f1 = followersFile.files[0];
+    let f2 = followingFile.files[0];
+    if (!f1 || !f2) return alert("Upload both files!");
+
+    let r1 = new FileReader();
+    let r2 = new FileReader();
+
+    r1.onload = () => {
+        let followers = extractUsernames(JSON.parse(r1.result));
+        r2.onload = () => {
+            let following = extractUsernames(JSON.parse(r2.result));
+
+            followersCount.innerText = "Followers: " + followers.length;
+            followingCount.innerText = "Following: " + following.length;
+
+            let non = following.filter(x => !followers.includes(x));
+            display(non);
+        };
+        r2.readAsText(f2);
+    };
+    r1.readAsText(f1);
+}
+
+function display(list) {
+    allUsers = list;
+    output.innerHTML = "";
+    count.innerText = "Non-followers: " + list.length;
+    list.forEach(u => createCard(u));
+    updateProgress();
+}
+
+function createCard(u) {
+    let div = document.createElement("div");
+    div.className = "user" + (doneSet.has(u) ? " done" : "");
+    div.id = "card-" + u;
+
+    div.innerHTML = `
+        <b>${u}</b>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+            <button onclick="openProfile('${u}')">Unfollow →</button>
+            <button onclick="navigator.clipboard.writeText('${u}')">Copy</button>
+            <button onclick="markDone('${u}')">✔ Done</button>
+        </div>
+    `;
+
+    output.appendChild(div);
+}
+
+/* 🔥 OPEN IN INSTAGRAM APP FIRST */
+function openProfile(u) {
+    currentUser = u;
+
+    let appLink = "instagram://user?username=" + u;
+    let webLink = "https://www.instagram.com/" + u + "/";
+
+    let isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+
+    if (isMobile) {
+        window.location.href = appLink;
+
+        setTimeout(() => {
+            window.location.href = webLink;
+        }, 800);
+    } else {
+        window.open(webLink, "_blank");
+    }
+
+    bannerUser.innerText = '@' + u;
+    onetabBanner.style.display = 'block';
+}
+
+function markCurrentDone() {
+    if (currentUser) markDone(currentUser);
+    nextUser();
+}
+
+function skipCurrent() {
+    nextUser();
+}
+
+function nextUser() {
+    onetabBanner.style.display = 'none';
+    let next = allUsers.find(u => !doneSet.has(u));
+    if (next) setTimeout(() => openProfile(next), 300);
+}
+
+function markDone(u) {
+    doneSet.add(u);
+    localStorage.setItem('fs_done', JSON.stringify([...doneSet]));
+    document.getElementById('card-' + u)?.classList.add('done');
+    updateProgress();
+}
+
+function updateProgress() {
+    let total = allUsers.length;
+    let done = allUsers.filter(u => doneSet.has(u)).length;
+    doneCount.innerText = `Done: ${done} / ${total}`;
+    progressBar.style.width = total ? (done / total * 100) + '%' : '0%';
+}
+
+function filterUsers() {
+    let q = searchBox.value.toLowerCase();
+    output.innerHTML = "";
+    allUsers.filter(u => u.toLowerCase().includes(q)).forEach(createCard);
+}
+</script>
+
+</body>
+</html>
