@@ -3,7 +3,6 @@
 <head>
     <title>Followsweep</title>
 
-    <!-- ✅ MOBILE VIEWPORT -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
@@ -23,9 +22,7 @@
             --border: #bbb;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             font-family: Arial;
@@ -36,11 +33,8 @@
             caret-color: transparent;
         }
 
-        #searchBox {
-            caret-color: auto;
-        }
+        #searchBox { caret-color: auto; }
 
-        /* TOP BAR */
         .topbar {
             position: sticky;
             top: 0;
@@ -48,24 +42,16 @@
             z-index: 10;
             display: flex;
             justify-content: space-between;
-            align-items: center;
             padding: 10px 0;
         }
 
-        h2 {
-            font-size: 20px;
-            margin: 0;
-        }
-
-        h3 {
-            font-size: 16px;
-        }
+        h2 { font-size: 20px; margin: 0; }
+        h3 { font-size: 16px; }
 
         button {
             padding: 10px;
             font-size: 14px;
             border-radius: 8px;
-            width: 100%;
             margin-top: 6px;
             cursor: pointer;
             background: var(--button);
@@ -79,8 +65,8 @@
             padding: 10px;
             background: var(--card);
             color: var(--text);
-            border: none;
             border-radius: 8px;
+            border: none;
         }
 
         .custom-file {
@@ -96,7 +82,6 @@
         .file-name {
             font-size: 13px;
             opacity: 0.7;
-            margin-bottom: 10px;
         }
 
         .user {
@@ -111,34 +96,23 @@
             text-decoration: line-through;
         }
 
-        .instructions {
-            background: var(--card);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
         .stats {
             margin: 10px 0;
             padding: 10px;
             background: var(--card);
             border-radius: 10px;
-            font-size: 14px;
         }
 
         .progress-wrap {
             background: var(--button);
             border-radius: 99px;
             height: 6px;
-            overflow: hidden;
         }
 
         .progress-bar {
             height: 100%;
             background: var(--text);
             width: 0%;
-            transition: 0.3s;
         }
 
         #onetab-banner {
@@ -148,10 +122,8 @@
             left: 5%;
             width: 90%;
             background: var(--card);
-            border: 1px solid var(--button);
             padding: 14px;
             border-radius: 12px;
-            z-index: 999;
             text-align: center;
         }
 
@@ -161,24 +133,7 @@
             gap: 6px;
         }
 
-        .banner-btns button {
-            flex: 1;
-        }
-
-        @media (min-width: 600px) {
-            body {
-                max-width: 600px;
-                margin: auto;
-            }
-
-            button {
-                width: auto;
-            }
-
-            .custom-file {
-                display: inline-block;
-            }
-        }
+        .banner-btns button { flex: 1; }
     </style>
 </head>
 
@@ -187,17 +142,6 @@
 <div class="topbar">
     <h2>Followsweep 🚀</h2>
     <button onclick="toggleTheme()">Theme</button>
-</div>
-
-<div class="instructions">
-    <h3>📘 How to Use</h3>
-    <ol>
-        <li>Instagram → Settings → Accounts Center</li>
-        <li>Download Your Information</li>
-        <li>Select Followers & Following</li>
-        <li>Format: JSON</li>
-        <li>Upload below</li>
-    </ol>
 </div>
 
 <label for="followersFile" class="custom-file">📁 Followers list</label>
@@ -227,7 +171,7 @@
 <div id="output"></div>
 
 <div id="onetab-banner">
-    <div>Opened <b id="banner-user">@user</b></div>
+    <div>Opened <b id="bannerUser">@user</b></div>
     <div class="banner-btns">
         <button onclick="markCurrentDone()">✔ Done</button>
         <button onclick="skipCurrent()">⏭ Skip</button>
@@ -248,6 +192,19 @@ window.onload = () => {
     if (localStorage.getItem("theme") === "light") {
         document.body.classList.add("light");
     }
+
+    // RESTORE USERS
+    let saved = JSON.parse(localStorage.getItem('fs_users') || '[]');
+    if (saved.length) {
+        display(saved);
+    }
+
+    // RESTORE COUNTS
+    let fc = localStorage.getItem('fs_followers_count');
+    let fg = localStorage.getItem('fs_following_count');
+
+    if (fc) followersCount.innerText = "Followers: " + fc;
+    if (fg) followingCount.innerText = "Following: " + fg;
 };
 
 followersFile.onchange = () => followersName.innerText = followersFile.files[0]?.name || "";
@@ -277,17 +234,26 @@ function processData() {
 
     r1.onload = () => {
         let followers = extractUsernames(JSON.parse(r1.result));
+
         r2.onload = () => {
             let following = extractUsernames(JSON.parse(r2.result));
 
             followersCount.innerText = "Followers: " + followers.length;
             followingCount.innerText = "Following: " + following.length;
 
+            localStorage.setItem('fs_followers_count', followers.length);
+            localStorage.setItem('fs_following_count', following.length);
+
             let non = following.filter(x => !followers.includes(x));
+
+            localStorage.setItem('fs_users', JSON.stringify(non));
+
             display(non);
         };
+
         r2.readAsText(f2);
     };
+
     r1.readAsText(f1);
 }
 
@@ -306,7 +272,7 @@ function createCard(u) {
 
     div.innerHTML = `
         <b>${u}</b>
-        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+        <div style="display:flex; gap:6px; margin-top:8px;">
             <button onclick="openProfile('${u}')">Unfollow →</button>
             <button onclick="navigator.clipboard.writeText('${u}')">Copy</button>
             <button onclick="markDone('${u}')">✔ Done</button>
@@ -316,21 +282,15 @@ function createCard(u) {
     output.appendChild(div);
 }
 
-/* 🔥 OPEN IN INSTAGRAM APP FIRST */
 function openProfile(u) {
     currentUser = u;
 
     let appLink = "instagram://user?username=" + u;
     let webLink = "https://www.instagram.com/" + u + "/";
 
-    let isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-
-    if (isMobile) {
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
         window.location.href = appLink;
-
-        setTimeout(() => {
-            window.location.href = webLink;
-        }, 800);
+        setTimeout(() => window.location.href = webLink, 800);
     } else {
         window.open(webLink, "_blank");
     }
@@ -344,9 +304,7 @@ function markCurrentDone() {
     nextUser();
 }
 
-function skipCurrent() {
-    nextUser();
-}
+function skipCurrent() { nextUser(); }
 
 function nextUser() {
     onetabBanner.style.display = 'none';
